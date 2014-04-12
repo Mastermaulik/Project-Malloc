@@ -1,0 +1,91 @@
+Team Name : “ Bit Ninjas”
+Members:      Maulik Soneji(201201122)
+	      Harsh Patel(201201134)
+
+The basic Idea:
+The basic idea is to keep a track of all the free blocks using hashing by segregated free lists.
+
+The idea for using segregated free lists.
+Here we have used 10 segregated free lists to keep a track of the free blocks of different sizes.
+The segregated free list stores addresses of blocks which are yet to be allocated
+The addresses of the free blocks are stored with respect to their sizes and thus the time to find a free block reduces significantly.
+In order to store multiple addresses in each free list we have created sub lists ensuring that all our blocks have been kept intact.
+
+Functions used and their functionality:
+1) mem_init
+→ mem_init function initializes the heap and heap structure is as follows
+First there is a 4 byte padding for alignment purpose.
+Then there is a prologue which consist of a 4 byte header 4 byte footer and 10 segregated free list(each of 4 byte) initialised to zero. Hence prologue consists of 12 bytes .
+At last there is a eoilogue whuch is of 4 bytes.
+Hence heap is initialised to 14 bytes.
+And then it is extended by chunk size.
+
+2) extend_heap(words)
+Here first the size is set depending upon no of words in order to satisfy 8 word alignment.
+Then header and footer is set based upon size and it is set to 0 which denotes unallocated.
+The next block is set as new epilogue
+And then coalesce is called.
+
+3) mm_malloc(size)
+Here malloc requests just the size that is required by the payload. So keeping header, footer and alignment issues in mind its size has been modified to assize.
+Then find fit is called to find a suitable block and if it returns successfully then place is called to allocate the block.
+If find fit is unable to find suitable block then heap is extended by calling extend_heap and then place is called.
+
+4)find_fit(size)
+If no blocks are free it returns null.
+Else it starts traversing the free list based upon size ie if size is 152 it starts traversing from the 2nd list. It traverses through the entire sublist of the 2nd list and if no match is found then it traverses through the sublist of the third list and so on.
+The free blocks of size 0 to 128 would be in 1st free list. Free blocks of size 129 to 256 are in 2nd free list and so on. If the free block size is very high then it is stored In the 10th free list.
+It searches for such a block where in size is satisfied and makes sure that it is not allocated.
+If so then it returns the block.
+Else null.
+
+5)place(bp, size)
+First it calculates the current size of the block. And if the difference between current size of the block and requested size is more than 16 bytes then it splits the block into two. The address of the original block is removed from the free list. The first part of the old block is made allocated while the second part is made free and its address is stored in the free list based upon its size .If difference is less than 16 then it just removes the address of the block from the free list and makes the block allocated.
+
+6)remove_blck(bp)
+In each and every list every, sub list keeps a track of its neighbours ie it sets prev and next pointers. While we perform a remove_blck operation, based on bp we reach the required block. Now we want to remove the block which obviously involves changing of prev and next pointers in such a way that the block is removed and the hierarchy of the free list is not disturbed.
+
+7)add_blck(bp)
+add_blck is basically performed to store the addresses of free block into the free list.
+The free list where in address is stored is decided on the size criterion as explained before.
+When we reach the required free list and we find that it is initialised to zero then we just store the required address onto the free list.
+Else we store the address in the sublist. 
+
+8)mm_free(bp)
+mm_free just updates header and the footer ie makes the last bit zero and performs a coalesce operation at block specified by bp.
+
+
+
+
+9) coalesce(bp)
+The basic functionality of coalesce is to merge free blocks.There are four general possibilities:
+1. If both prev and next blocks are free then it merges all the three blocks and forms a new block.In addition it performs remove_blck at prev and next block as those blocks are now a part of new block and the address of this new block is added on the basis of size via add_blck()
+2.  If only prev block is free then it merges prev and current block forming a new block.remove_blck is performed at previous block while new block is added to free list.
+3. Similarly if only next block is free then it is merged with current block and address of this new block is added to free list while next block is removed from the free list.
+4. If no block is free then just add the block to which bp points to the free list. 
+
+10)mm_realloc(ptr,size) 
+Ptr point to the block which is to be reallocated having size equal to oldsize and size is the new size of the block.
+If the difference between the size of the newblock(after serving alignment issues) and oldblock is greater than 16 then split the old block into two parts with first one being new block and the second block being made free and performing coalesce function on it.But if the difference is less than 16 then the old block becomes new block without anything changing.
+Else if 
+Size of new block is less then old bock then perform coalesce with neighbouring blocks and removing addresses of those blocks which were free and which were merged into the new block.Add new block into free list. Now if the size of the new  merged block(considering alignment issues) exceeds size requirement by more than 16 then as explained above split the block into two.If it exceeds less than 16 then just return new merged block. And if size of new merged block is less than make a call to malloc freeing the old block.
+
+ADVANTAGES
+Allocation: O(n)  Best case: O(1) Worst case: O(n)( We  wont have to traverse entire heap in order to perform a malloc call)
+Free: O(1)	
+Re alloc : If the block size is sufficiently large or becomes sufficiently large after coalescing then O(1)
+	Else takes same as a call to malloc
+
+The worst case would be when all the 10 free lists occupy a single address which would be just like first fit.
+
+
+
+
+TRADE OFF BETWEEN IMMEDIATE COALESCING AND DEFERRED COALESCING
+Here we have performed immediate coalescing where in as soon as block is free we check if the neighbouring blocks are free and if so we merge the blocks to form a new block. We also perform remove_blck(o(n)) at block which were free .And finally a add_blck. So we can see that its going to take time. Now if a block is requested whose size is equal to the block just freed and if our list does not contain any other entry that satisfies this size then we will have to perform procedure of allocating block of higher size and splitting it into two. This is going to take a very long time. This  is when deferred coalescing comes in handy. However if after freeing a block of smaller size a block with larger size is requested then immediate coalescing is better. Thus both coalescing techniques have their own advantages and disadvantages.
+
+HOW MANY SEGREGATED FREE LISTS TO USE?
+The basic thought that came to our mind was that we should have as many free lists as possible because they do not occupy much space and they keep track of free blocks of various sizes.
+When the number of free lists were 8, the output was 76 and the sizes difference between the two free lists was 200.
+Then the number of free lists were 10 the output was 89 and the sizes difference between the two free lists was 128.
+
